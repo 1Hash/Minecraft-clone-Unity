@@ -1,11 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEditor.PlayerSettings;
 
-public class Block : MonoBehaviour
+public class Block
 {
     public bool solid;
+    public Chunk dono;
 
     public enum TypeTexture
     {
@@ -20,29 +22,12 @@ public class Block : MonoBehaviour
     public GameObject obj;
     public Material cubeMat;
 
-    public Block(TypeTexture t, Vector3 pos, GameObject p, Material m)
+    public Block(TypeTexture t, Vector3 pos, GameObject p, Chunk c)
     {
         typeTexture = t;
+        dono = c;
         position = pos;
         obj = p;
-        cubeMat = m;
-
-        if (typeTexture == TypeTexture.Air)
-        {
-            solid = false;
-        }
-        else
-        {
-            solid = true;
-        }
-    }
-
-    public void Setup(TypeTexture t, Vector3 pos, GameObject p, Material m)
-    {
-        typeTexture = t;
-        position = pos;
-        obj = p;
-        cubeMat = m;
 
         if (typeTexture == TypeTexture.Air)
         {
@@ -56,7 +41,8 @@ public class Block : MonoBehaviour
 
     public bool TemVizinhoSolido(int x, int y, int z)
     {
-        Block[,,] chunks = obj.GetComponent<Chunk>().chunkData; 
+        Block[,,] chunks;
+        chunks = dono.chunkData;
 
         try
         {
@@ -101,8 +87,7 @@ public class Block : MonoBehaviour
 
     void Start()
     {
-        mesh = new Mesh();
-        CreateCube();
+
     }
 
     public void CreateCube()

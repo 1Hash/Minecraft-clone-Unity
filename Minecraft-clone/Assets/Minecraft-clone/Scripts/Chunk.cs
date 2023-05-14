@@ -2,51 +2,56 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Chunk : MonoBehaviour
+public class Chunk
 {
     public Material material;
     public Block[,,] chunkData;
 
     private MeshFilter[] meshFilter;
 
-    IEnumerator BuildChunk(int tX, int tY, int tZ)
+    public GameObject chunk;
+
+    void BuildChunk()
     {
-        chunkData = new Block[tX, tY, tZ];
+        chunkData = new Block[World.chunkSize, World.chunkSize, World.chunkSize];
 
         //create blocks
 
-        for (int z = 0; z < tZ; z++)
+        for (int z = 0; z < World.chunkSize; z++)
         {
-            for(int y = 0; y < tY; y++)
+            for (int y = 0; y < World.chunkSize; y++)
             {
-                for (int x = 0; x < tX; x++)
+                for (int x = 0; x < World.chunkSize; x++)
                 {
                     Vector3 pos = new Vector3(x, y, z);
 
                     if (Random.Range(0, 500) > 100)
                     {
-                        chunkData[x, y, z] = new Block(Block.TypeTexture.Grass, pos, this.gameObject, material);
+                        chunkData[x, y, z] = new Block(Block.TypeTexture.Grass, pos, chunk, this);
                     }
                     else
                     {
-                        chunkData[x, y, z] = new Block(Block.TypeTexture.Air, pos, this.gameObject, material);
+                        chunkData[x, y, z] = new Block(Block.TypeTexture.Air, pos, chunk, this);
                     }
 
-                    
+
                 }
             }
         }
 
+    }
+
+    public void DrawChunk()
+    {
         //draw blocks
 
-        for (int z = 0; z < tZ; z++)
+        for (int z = 0; z < World.chunkSize; z++)
         {
-            for (int y = 0; y < tY; y++)
+            for (int y = 0; y < World.chunkSize; y++)
             {
-                for (int x = 0; x < tX; x++)
+                for (int x = 0; x < World.chunkSize; x++)
                 {
                     chunkData[x, y, z].CreateCube();
-                    yield return null;
                 }
             }
         }
@@ -54,14 +59,22 @@ public class Chunk : MonoBehaviour
         CombineAll();
     }
 
+    public Chunk(Vector3 position, Material m)
+    {
+        chunk = new GameObject(World.ChunkName(position));
+        chunk.transform.position = position;
+        material = m;
+        BuildChunk();
+    }
+
     void Start()
     {
-        StartCoroutine(BuildChunk(4,4,4));
+        
     }
 
     void CombineAll()
     {
-        meshFilter = GetComponentsInChildren<MeshFilter>();
+        meshFilter = chunk.GetComponentsInChildren<MeshFilter>();
         CombineInstance[] combine = new CombineInstance[meshFilter.Length];
 
         int m = 0;
@@ -73,17 +86,14 @@ public class Chunk : MonoBehaviour
             m++;
         }
 
-        MeshFilter mf = (MeshFilter)this.gameObject.AddComponent(typeof(MeshFilter));
+        MeshFilter mf = (MeshFilter)chunk.gameObject.AddComponent(typeof(MeshFilter));
         mf.mesh = new Mesh();
 
         mf.mesh.CombineMeshes(combine);
 
-        MeshRenderer renderer = (MeshRenderer)this.gameObject.AddComponent(typeof(MeshRenderer));
+        MeshRenderer renderer = (MeshRenderer)chunk.gameObject.AddComponent(typeof(MeshRenderer));
         renderer.material = this.material;
 
-        foreach (Transform item in this.transform)
-        {
-            Destroy(item.gameObject);
-        }
+        World.DestroyObjects(chunk);
     }
 }

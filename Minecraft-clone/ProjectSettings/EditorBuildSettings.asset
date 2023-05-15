@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/OutdoorsScene.unity
+    path: Assets/Minecraft-clone/Scenes/LoadScene.unity
+    guid: b6b62de284dfaa74fa75e848f8176065
+  - enabled: 1
+    path: Assets/Minecraft-clone/Scenes/GameScene.unity
     guid: 8124e5870f4fd4c779e7a5f994e84ad1
   m_configObjects: {}

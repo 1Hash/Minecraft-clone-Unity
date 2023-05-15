@@ -7,7 +7,7 @@ using static UnityEditor.PlayerSettings;
 public class Block
 {
     public bool solid;
-    public Chunk dono;
+    public Chunk owner;
 
     public enum TypeTexture
     {
@@ -25,7 +25,7 @@ public class Block
     public Block(TypeTexture t, Vector3 pos, GameObject p, Chunk c)
     {
         typeTexture = t;
-        dono = c;
+        owner = c;
         position = pos;
         obj = p;
 
@@ -39,49 +39,96 @@ public class Block
         }
     }
 
+    int ConvertPos(int a)
+    {
+        if(a == -1)
+        {
+            a = World.chunkSize - 1;
+        }
+        else if(a <= World.chunkSize)
+        {
+            a = 0;
+        }
+
+        return a;
+    }
+
     public bool TemVizinhoSolido(int x, int y, int z)
     {
         Block[,,] chunks;
-        chunks = dono.chunkData;
+
+        if(x < 0 || x >= World.chunkSize ||
+            y < 0 || y >= World.chunkSize ||
+            z < 0 || z >= World.chunkSize)
+        {
+            Vector3 posVizinho = this.obj.transform.position + new Vector3(
+                (x - (int)position.x) * World.chunkSize,
+                (y - (int)position.y) * World.chunkSize,
+                (z - (int)position.z) * World.chunkSize);
+
+            string nomeK = World.ChunkName(posVizinho);
+
+            x = ConvertPos(x);
+            y = ConvertPos(y);
+            z = ConvertPos(z);
+
+            Chunk ch;
+            if(World.chunks.TryGetValue(nomeK, out ch))
+            {
+                chunks = ch.chunkData;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+        else
+        {
+            chunks = owner.chunkData;
+        }
+
 
         try
         {
             return chunks[x, y, z].solid;
         }
-        catch (System.IndexOutOfRangeException ex)
+        catch (System.IndexOutOfRangeException)
         {
             return false;
-        }
+        }     
     }
 
     [SerializeField] public Mesh mesh;
     [SerializeField] public MeshFilter meshFilter;
     [SerializeField] private MeshCollider chunkCol;
 
-    private List<Vector3> vertices = new List<Vector3>();
-    private List<int> triangulos = new List<int>();
+    private List<Vector3> vertex = new List<Vector3>();
+    private List<int> triangles = new List<int>();
 
     [SerializeField] private int contFace;
 
     //Textura
 
     public List<Vector2> UVText = new List<Vector2>();
-    private float textLargura = 0.0625f;
-    private int faceContagem;
+    private float textWidth = 0.0625f;
 
-    private Vector2 gramaTopo = new Vector2(2, 6);
-    private Vector2 gramaLado = new Vector2(3, 15);
-    private Vector2 gramaBaixo = new Vector2(2, 15);
+    private Vector2 grassTop = new Vector2(2, 6);
+    private Vector2 grassSide = new Vector2(3, 15);
+    private Vector2 grassLow = new Vector2(2, 15);
+
+    private Vector2 dirtTotal = new Vector2(2, 15);
+    private Vector2 stoneTotal = new Vector2(1, 15);
 
     void TexturaAjuste(Vector2 info)
     {
-        Vector2 posTextura;
-        posTextura = info;
+        Vector2 posTexture;
+        posTexture = info;
 
-        UVText.Add(new Vector2(textLargura * posTextura.x + textLargura, textLargura * posTextura.y));
-        UVText.Add(new Vector2(textLargura * posTextura.x + textLargura, textLargura * posTextura.y + textLargura));
-        UVText.Add(new Vector2(textLargura * posTextura.x, textLargura * posTextura.y + textLargura));
-        UVText.Add(new Vector2(textLargura * posTextura.x, textLargura * posTextura.y));
+        UVText.Add(new Vector2(textWidth * posTexture.x + textWidth, textWidth * posTexture.y));
+        UVText.Add(new Vector2(textWidth * posTexture.x + textWidth, textWidth * posTexture.y + textWidth));
+        UVText.Add(new Vector2(textWidth * posTexture.x, textWidth * posTexture.y + textWidth));
+        UVText.Add(new Vector2(textWidth * posTexture.x, textWidth * posTexture.y));
     }
 
 
@@ -153,84 +200,150 @@ public class Block
 
     void TopoConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x, y, z + 1));
-        vertices.Add(new Vector3(x + 1, y, z + 1));
-        vertices.Add(new Vector3(x + 1, y, z));
-        vertices.Add(new Vector3(x, y, z));
+        vertex.Add(new Vector3(x, y, z + 1));
+        vertex.Add(new Vector3(x + 1, y, z + 1));
+        vertex.Add(new Vector3(x + 1, y, z));
+        vertex.Add(new Vector3(x, y, z));
 
-        TexturaAjuste(gramaTopo);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassTop);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void NorteConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x + 1, y - 1, z + 1));
-        vertices.Add(new Vector3(x + 1, y, z + 1));
-        vertices.Add(new Vector3(x, y, z + 1));
-        vertices.Add(new Vector3(x, y - 1, z + 1));
+        vertex.Add(new Vector3(x + 1, y - 1, z + 1));
+        vertex.Add(new Vector3(x + 1, y, z + 1));
+        vertex.Add(new Vector3(x, y, z + 1));
+        vertex.Add(new Vector3(x, y - 1, z + 1));
 
-        TexturaAjuste(gramaLado);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassSide);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void LesteConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x + 1, y - 1, z));
-        vertices.Add(new Vector3(x + 1, y, z));
-        vertices.Add(new Vector3(x + 1, y, z + 1));
-        vertices.Add(new Vector3(x + 1, y - 1, z + 1));
+        vertex.Add(new Vector3(x + 1, y - 1, z));
+        vertex.Add(new Vector3(x + 1, y, z));
+        vertex.Add(new Vector3(x + 1, y, z + 1));
+        vertex.Add(new Vector3(x + 1, y - 1, z + 1));
 
-        TexturaAjuste(gramaLado);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassSide);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void SulConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x, y - 1, z));
-        vertices.Add(new Vector3(x, y, z));
-        vertices.Add(new Vector3(x + 1, y, z));
-        vertices.Add(new Vector3(x + 1, y - 1, z));
+        vertex.Add(new Vector3(x, y - 1, z));
+        vertex.Add(new Vector3(x, y, z));
+        vertex.Add(new Vector3(x + 1, y, z));
+        vertex.Add(new Vector3(x + 1, y - 1, z));
 
-        TexturaAjuste(gramaLado);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassSide);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void OesteConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x, y - 1, z + 1));
-        vertices.Add(new Vector3(x, y, z + 1));
-        vertices.Add(new Vector3(x, y, z));
-        vertices.Add(new Vector3(x, y - 1, z));
+        vertex.Add(new Vector3(x, y - 1, z + 1));
+        vertex.Add(new Vector3(x, y, z + 1));
+        vertex.Add(new Vector3(x, y, z));
+        vertex.Add(new Vector3(x, y - 1, z));
 
-        TexturaAjuste(gramaLado);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassSide);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void BaixoConstr(int x, int y, int z)
     {
-        vertices.Add(new Vector3(x, y - 1, z));
-        vertices.Add(new Vector3(x + 1, y - 1, z));
-        vertices.Add(new Vector3(x + 1, y - 1, z + 1));
-        vertices.Add(new Vector3(x, y - 1, z + 1));
+        vertex.Add(new Vector3(x, y - 1, z));
+        vertex.Add(new Vector3(x + 1, y - 1, z));
+        vertex.Add(new Vector3(x + 1, y - 1, z + 1));
+        vertex.Add(new Vector3(x, y - 1, z + 1));
 
-        TexturaAjuste(gramaBaixo);
+        if (typeTexture == TypeTexture.Dirt)
+        {
+            TexturaAjuste(dirtTotal);
+        }
+        else if (typeTexture == TypeTexture.Grass)
+        {
+            TexturaAjuste(grassLow);
+        }
+        else if (typeTexture == TypeTexture.Rock)
+        {
+            TexturaAjuste(stoneTotal);
+        }
 
         CalcTris();
     }
 
     void CalcTris()
     {
-        triangulos.Add(contFace * 4 + 0);
-        triangulos.Add(contFace * 4 + 1);
-        triangulos.Add(contFace * 4 + 2);
-        triangulos.Add(contFace * 4 + 0);
-        triangulos.Add(contFace * 4 + 2);
-        triangulos.Add(contFace * 4 + 3);
+        triangles.Add(contFace * 4 + 0);
+        triangles.Add(contFace * 4 + 1);
+        triangles.Add(contFace * 4 + 2);
+        triangles.Add(contFace * 4 + 0);
+        triangles.Add(contFace * 4 + 2);
+        triangles.Add(contFace * 4 + 3);
 
         contFace++;
     }
@@ -238,15 +351,15 @@ public class Block
     void MeshUpdate()
     {
         mesh.Clear();
-        mesh.vertices = vertices.ToArray();
+        mesh.vertices = vertex.ToArray();
         mesh.uv = UVText.ToArray();
-        mesh.triangles = triangulos.ToArray();
+        mesh.triangles = triangles.ToArray();
         mesh.Optimize();
         mesh.RecalculateNormals();
 
-        vertices.Clear();
+        vertex.Clear();
         UVText.Clear();
-        triangulos.Clear();
+        triangles.Clear();
 
         contFace = 0;
     }

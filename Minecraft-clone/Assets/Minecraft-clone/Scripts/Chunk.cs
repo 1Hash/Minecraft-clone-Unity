@@ -11,6 +11,15 @@ public class Chunk
 
     public GameObject chunk;
 
+    public enum StateChunk
+    {
+        Draw,
+        Done,
+        Save
+    }
+
+    public StateChunk state;
+
     void BuildChunk()
     {
         chunkData = new Block[World.chunkSize, World.chunkSize, World.chunkSize];
@@ -25,16 +34,28 @@ public class Chunk
                 {
                     Vector3 pos = new Vector3(x, y, z);
 
-                    if (Random.Range(0, 500) > 100)
+                    if (Noise.Caverna(chunk.transform.position.x + x, chunk.transform.position.y + y, chunk.transform.position.z + z, 0.05f, 3) < 0.4f)
+                    {
+                        chunkData[x, y, z] = new Block(Block.TypeTexture.Air, pos, chunk, this);
+                    }
+                    else if (chunk.transform.position.y + y <= Noise.GeraAlturaRocha(chunk.transform.position.x + x, chunk.transform.position.z + z))
+                    {
+                        chunkData[x, y, z] = new Block(Block.TypeTexture.Rock, pos, chunk, this);
+                    }
+                    else if (chunk.transform.position.y + y == Noise.GeraAltura(chunk.transform.position.x + x, chunk.transform.position.z + z))
                     {
                         chunkData[x, y, z] = new Block(Block.TypeTexture.Grass, pos, chunk, this);
+                    }
+                    else if (chunk.transform.position.y + y < Noise.GeraAltura(chunk.transform.position.x + x, chunk.transform.position.z + z))
+                    {
+                        chunkData[x, y, z] = new Block(Block.TypeTexture.Dirt, pos, chunk, this);
                     }
                     else
                     {
                         chunkData[x, y, z] = new Block(Block.TypeTexture.Air, pos, chunk, this);
                     }
 
-
+                    state = StateChunk.Draw;
                 }
             }
         }
@@ -57,6 +78,8 @@ public class Chunk
         }
 
         CombineAll();
+        MeshCollider collider = chunk.gameObject.AddComponent(typeof(MeshCollider)) as MeshCollider;
+        collider.sharedMesh = chunk.transform.GetComponent<MeshFilter>().mesh;
     }
 
     public Chunk(Vector3 position, Material m)
@@ -76,9 +99,7 @@ public class Chunk
     {
         meshFilter = chunk.GetComponentsInChildren<MeshFilter>();
         CombineInstance[] combine = new CombineInstance[meshFilter.Length];
-
         int m = 0;
-
         while (m < meshFilter.Length)
         {
             combine[m].mesh = meshFilter[m].sharedMesh;
@@ -86,13 +107,22 @@ public class Chunk
             m++;
         }
 
-        MeshFilter mf = (MeshFilter)chunk.gameObject.AddComponent(typeof(MeshFilter));
-        mf.mesh = new Mesh();
+        if (chunk.gameObject.GetComponent<MeshFilter>() == null)
+        {
 
-        mf.mesh.CombineMeshes(combine);
 
-        MeshRenderer renderer = (MeshRenderer)chunk.gameObject.AddComponent(typeof(MeshRenderer));
-        renderer.material = this.material;
+            MeshFilter mf = (MeshFilter)chunk.gameObject.AddComponent(typeof(MeshFilter));
+            mf.mesh = new Mesh();
+
+
+            mf.mesh.CombineMeshes(combine);
+        }
+
+        if (chunk.gameObject.GetComponent<MeshRenderer>() == null)
+        {
+            MeshRenderer renderer = (MeshRenderer)chunk.gameObject.AddComponent(typeof(MeshRenderer));
+            renderer.material = material;
+        }
 
         World.DestroyObjects(chunk);
     }
